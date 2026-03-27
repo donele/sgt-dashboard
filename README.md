@@ -46,10 +46,10 @@ sgt-shm-reader --pathname <shm-pathname> --refdata /path/to/refdata.json
   <img src="pictures/screenshot_btc_bybit_1m.png" alt="BTC BYBIT 1m" width="500" />
 </p>
 
-### SOL BYBIT 10m
+### ETH BYBIT 10m
 
 <p>
-  <img src="pictures/screenshot_sol_bybit_10m.png" alt="SOL BYBIT 10m" width="500" />
+  <img src="pictures/screenshot_eth_bybit_10m.png" alt="ETH BYBIT 10m" width="500" />
 </p>
 
 ## Testing
