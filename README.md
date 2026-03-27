@@ -42,11 +42,15 @@ sgt-shm-reader --pathname /node_data/shm/datashm --refdata /path/to/refdata.json
 
 ### BTC BYBIT 1m
 
-![BTC BYBIT 1m](pictures/screenshot_btc_bybit_1m.png)
+<p>
+  <img src="pictures/screenshot_btc_bybit_1m.png" alt="BTC BYBIT 1m" width="700" />
+</p>
 
 ### SOL BYBIT 10m
 
-![SOL BYBIT 10m](pictures/screenshot_sol_bybit_10m.png)
+<p>
+  <img src="pictures/screenshot_sol_bybit_10m.png" alt="SOL BYBIT 10m" width="700" />
+</p>
 
 ## Testing
 
