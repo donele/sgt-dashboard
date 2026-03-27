@@ -38,6 +38,16 @@ sgt-shm-reader --pathname /node_data/shm/datashm --refdata /path/to/refdata.json
 - Estimated 24-hour volume is extrapolated from the latest 10-minute notional series.
 
 
+## Screenshots
+
+### BTC BYBIT 1m
+
+![BTC BYBIT 1m](pictures/screenshot_btc_bybit_1m.png)
+
+### SOL BYBIT 10m
+
+![SOL BYBIT 10m](pictures/screenshot_sol_bybit_10m.png)
+
 ## Testing
 
 ```bash
