@@ -117,6 +117,35 @@ class StreamState:
                 }
             return out
 
+    def snapshot_symbol(self, selected: Optional[str]) -> dict:
+        with self._lock:
+            symbols = sorted(self.symbol_to_series.keys())
+            selected_sym = selected if selected in self.symbol_to_series else (symbols[0] if symbols else None)
+
+            series = None
+            if selected_sym is not None:
+                s = self.symbol_to_series[selected_sym]
+                series = {
+                    "bid_ts": list(s.bid_ts),
+                    "bid_px": list(s.bid_px),
+                    "ask_ts": list(s.ask_ts),
+                    "ask_px": list(s.ask_px),
+                    "trade_ts": list(s.trade_ts),
+                    "trade_px": list(s.trade_px),
+                    "trade_qty": list(s.trade_qty),
+                    "last_kind": s.last_kind,
+                    "last_px": s.last_px,
+                    "last_seq": s.last_seq,
+                }
+
+            return {
+                "events_total": self.events_total,
+                "last_event_age_sec": (time.time() - self.last_event_time) if self.last_event_time else float("inf"),
+                "symbols": symbols,
+                "selected": selected_sym,
+                "series": series,
+            }
+
 
 class ReaderProcess:
     def __init__(
@@ -311,7 +340,7 @@ def build_app(state: StreamState, title: str) -> Dash:
         Input("window-select", "value"),
     )
     def refresh(_n: int, selected: Optional[str], window_sel: str):
-        snap = state.snapshot()
+        snap = state.snapshot_symbol(selected)
         symbols = snap["symbols"]
         options = [{"label": s, "value": s} for s in symbols]
 
@@ -323,10 +352,8 @@ def build_app(state: StreamState, title: str) -> Dash:
                 return options, None, status, fig, fig, {"height": "72vh", "display": "none", "borderRadius": "16px", "boxShadow": "0 12px 30px rgba(2, 6, 23, 0.55)", "background": "#121A2B"}, {"height": "72vh", "borderRadius": "16px", "boxShadow": "0 12px 30px rgba(2, 6, 23, 0.55)", "background": "#121A2B"}
             return options, None, status, fig, fig, {"height": "72vh", "borderRadius": "16px", "boxShadow": "0 12px 30px rgba(2, 6, 23, 0.55)", "background": "#121A2B"}, {"height": "72vh", "display": "none", "borderRadius": "16px", "boxShadow": "0 12px 30px rgba(2, 6, 23, 0.55)", "background": "#121A2B"}
 
-        if selected not in symbols:
-            selected = symbols[0]
-
-        s = snap["series"][selected]
+        selected = snap["selected"]
+        s = snap["series"]
 
         latest_candidates: List[float] = []
         if s["bid_ts"]:
@@ -403,33 +430,35 @@ def build_app(state: StreamState, title: str) -> Dash:
 
         vol_x, vol_y = _aggregate_trade_notional_bucket(otrd_t, otrd_p, otrd_q, overview_bucket_sec)
 
-        overview_fig = make_subplots(
-            rows=2,
-            cols=1,
-            shared_xaxes=True,
-            vertical_spacing=0.03,
-            row_heights=[0.70, 0.30],
-        )
+        overview_fig = go.Figure()
+        if window_sel == "10m":
+            overview_fig = make_subplots(
+                rows=2,
+                cols=1,
+                shared_xaxes=True,
+                vertical_spacing=0.03,
+                row_heights=[0.70, 0.30],
+            )
 
-        if mid_x:
-            overview_fig.add_trace(go.Scatter(x=mid_x, y=mid_p, mode="lines", name="mid", line={"width": 2.0, "shape": "hv", "color": "#93C5FD"}), row=1, col=1)
-        if vol_x:
-            overview_fig.add_trace(go.Bar(x=vol_x, y=vol_y, name="notional USD / 10s", width=overview_bucket_sec * 1000, marker={"color": "#60A5FA", "opacity": 0.85}), row=2, col=1)
+            if mid_x:
+                overview_fig.add_trace(go.Scatter(x=mid_x, y=mid_p, mode="lines", name="mid", line={"width": 2.0, "shape": "hv", "color": "#93C5FD"}), row=1, col=1)
+            if vol_x:
+                overview_fig.add_trace(go.Bar(x=vol_x, y=vol_y, name="notional USD / 10s", width=overview_bucket_sec * 1000, marker={"color": "#60A5FA", "opacity": 0.85}), row=2, col=1)
 
-        overview_fig.update_layout(
-            template="plotly_white",
-            paper_bgcolor="#0F172A",
-            plot_bgcolor="#111827",
-            font={"color": "#D7E2F0"},
-            margin={"l": 40, "r": 10, "t": 30, "b": 40},
-            legend={"orientation": "h", "y": 1.03, "x": 0.0, "bgcolor": "rgba(17,24,39,0.75)"},
-            hovermode="x unified",
-            xaxis={"range": [overview_cutoff_dt, latest_dt], "tickformat": "%H:%M:%S"},
-            xaxis2={"range": [overview_cutoff_dt, latest_dt], "tickformat": "%H:%M:%S", "title": "time"},
-        )
-        overview_fig.update_yaxes(title_text="mid price", row=1, col=1, gridcolor="#243042", zeroline=False)
-        overview_fig.update_yaxes(title_text="notional USD", row=2, col=1, gridcolor="#243042", zeroline=False)
-        overview_fig.update_xaxes(showgrid=True, gridcolor="#1F2A3D")
+            overview_fig.update_layout(
+                template="plotly_white",
+                paper_bgcolor="#0F172A",
+                plot_bgcolor="#111827",
+                font={"color": "#D7E2F0"},
+                margin={"l": 40, "r": 10, "t": 30, "b": 40},
+                legend={"orientation": "h", "y": 1.03, "x": 0.0, "bgcolor": "rgba(17,24,39,0.75)"},
+                hovermode="x unified",
+                xaxis={"range": [overview_cutoff_dt, latest_dt], "tickformat": "%H:%M:%S"},
+                xaxis2={"range": [overview_cutoff_dt, latest_dt], "tickformat": "%H:%M:%S", "title": "time"},
+            )
+            overview_fig.update_yaxes(title_text="mid price", row=1, col=1, gridcolor="#243042", zeroline=False)
+            overview_fig.update_yaxes(title_text="notional USD", row=2, col=1, gridcolor="#243042", zeroline=False)
+            overview_fig.update_xaxes(showgrid=True, gridcolor="#1F2A3D")
 
         active_window = 600 if window_sel == "10m" else 60
 
